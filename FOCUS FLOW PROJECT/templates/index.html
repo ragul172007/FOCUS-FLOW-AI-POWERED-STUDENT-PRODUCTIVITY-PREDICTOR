@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focus Flow AI — Student Productivity Predictor</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <!-- Ambient background layers -->
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb--one"></div>
+  <div class="bg-orb bg-orb--two"></div>
+  <div class="bg-orb bg-orb--three"></div>
+
+  <div class="app-shell">
+
+    <!-- ===================== LEFT PANEL ===================== -->
+    <aside class="panel panel--left" data-animate="fade-in">
+      <div class="brand">
+        <div class="brand__icon" aria-hidden="true">🧠</div>
+        <div class="brand__text">
+          <h1 class="brand__title">Focus Flow AI</h1>
+          <p class="brand__subtitle">AI Powered Student Productivity Predictor</p>
+        </div>
+      </div>
+
+      <form id="predict-form" class="predict-form" action="/predict" method="POST" novalidate>
+
+        <div class="field">
+          <label for="study_time" class="field__label">
+            <span class="field__label-text">Study Time</span>
+            <span class="field__label-unit">minutes</span>
+          </label>
+          <div class="field__control">
+            <input
+              type="number"
+              id="study_time"
+              name="study_time"
+              class="field__input"
+              min="0"
+              max="600"
+              step="1"
+              placeholder="e.g. 90"
+              value="{{ study | default('') }}"
+              required
+            />
+            <span class="field__icon">📘</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="phone_usage" class="field__label">
+            <span class="field__label-text">Phone Usage</span>
+            <span class="field__label-unit">minutes</span>
+          </label>
+          <div class="field__control">
+            <input
+              type="number"
+              id="phone_usage"
+              name="phone_usage"
+              class="field__input"
+              min="0"
+              max="600"
+              step="1"
+              placeholder="e.g. 45"
+              value="{{ phone | default('') }}"
+              required
+            />
+            <span class="field__icon">📱</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="idle_time" class="field__label">
+            <span class="field__label-text">Idle Time</span>
+            <span class="field__label-unit">minutes</span>
+          </label>
+          <div class="field__control">
+            <input
+              type="number"
+              id="idle_time"
+              name="idle_time"
+              class="field__input"
+              min="0"
+              max="600"
+              step="1"
+              placeholder="e.g. 20"
+              value="{{ idle | default('') }}"
+              required
+            />
+            <span class="field__icon">⏳</span>
+          </div>
+        </div>
+
+        <button type="submit" id="predict-btn" class="predict-btn">
+          <span class="predict-btn__glow" aria-hidden="true"></span>
+          <span class="predict-btn__label">
+            <span class="predict-btn__icon">⚡</span>
+            Predict Focus
+          </span>
+          <span class="predict-btn__spinner" aria-hidden="true"></span>
+        </button>
+
+        <p class="panel__hint">Model: Random Forest Classifier · trained on session telemetry</p>
+      </form>
+    </aside>
+
+    <!-- ===================== RIGHT PANEL ===================== -->
+    <main class="panel panel--right">
+
+      <!-- Prediction hero card -->
+      <section class="card card--hero" data-animate="fade-in-up" style="--delay: 0.05s">
+        <div class="card__eyebrow">Prediction Result</div>
+        <div class="hero-result" style="--result-color: {{ color | default('#35e6a0') }}">
+          <div class="hero-result__badge" id="result-badge">
+            <span class="hero-result__dot"></span>
+            <span class="hero-result__text" id="result-text">{{ prediction | default('Focused') }}</span>
+            <span class="hero-result__emoji" id="result-emoji">
+  {% if prediction == "Distracted" %}
+    ⚠️
+  {% else %}
+    ✅
+  {% endif %}
+</span>
+          </div>
+          <p class="hero-result__caption">
+            Based on current study behavior, the model predicts this session state.
+          </p>
+        </div>
+      </section>
+
+      <div class="card-grid">
+
+        <!-- Confidence gauge card -->
+        <section class="card card--confidence" data-animate="fade-in-up" style="--delay: 0.12s">
+          <div class="card__eyebrow">Model Confidence</div>
+          <div class="gauge">
+            <svg class="gauge__svg" viewBox="0 0 160 160" width="160" height="160">
+              <circle class="gauge__track" cx="80" cy="80" r="68" />
+              <circle
+                class="gauge__progress"
+                id="gauge-progress"
+                cx="80" cy="80" r="68"
+                data-confidence="{{ confidence | default(87) }}"
+              />
+            </svg>
+            <div class="gauge__value">
+              <span class="gauge__number" id="confidence-number">0</span><span class="gauge__percent">%</span>
+              <span class="gauge__label">confidence</span>
+            </div>
+          </div>
+        </section>
+        <!-- Focus Score card -->
+<section class="card card--focus-score" data-animate="fade-in-up" style="--delay: 0.15s">
+  <div class="card__eyebrow">Focus Score</div>
+
+  <div class="focus-score">
+    <div class="focus-score__circle">
+      <span class="focus-score__number">
+        {{ focus_score | default(0) }}
+      </span>
+      <span class="focus-score__out-of">/100</span>
+    </div>
+
+    <div class="focus-score__status">
+      {% if focus_score | default(0) >= 75 %}
+        Excellent Focus
+      {% elif focus_score | default(0) >= 50 %}
+        Moderate Focus
+      {% else %}
+        Needs Improvement
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+        <!-- Statistics cards -->
+        <section class="card card--stats" data-animate="fade-in-up" style="--delay: 0.18s">
+          <div class="card__eyebrow">Session Statistics</div>
+          <div class="stat-list">
+
+            <div class="stat-item" data-stat>
+              <div class="stat-item__icon stat-item__icon--study">📘</div>
+              <div class="stat-item__body">
+                <span class="stat-item__label">Study Time</span>
+                <span class="stat-item__value">
+                  <span class="stat-item__number" data-count="{{ study | default(0) }}">0</span> min
+                </span>
+              </div>
+              <div class="stat-item__bar">
+                <span class="stat-item__bar-fill stat-item__bar-fill--study" data-bar="{{ study | default(0) }}"></span>
+              </div>
+            </div>
+
+            <div class="stat-item" data-stat>
+              <div class="stat-item__icon stat-item__icon--phone">📱</div>
+              <div class="stat-item__body">
+                <span class="stat-item__label">Phone Usage</span>
+                <span class="stat-item__value">
+                  <span class="stat-item__number" data-count="{{ phone | default(0) }}">0</span> min
+                </span>
+              </div>
+              <div class="stat-item__bar">
+                <span class="stat-item__bar-fill stat-item__bar-fill--phone" data-bar="{{ phone | default(0) }}"></span>
+              </div>
+            </div>
+
+            <div class="stat-item" data-stat>
+              <div class="stat-item__icon stat-item__icon--idle">⏳</div>
+              <div class="stat-item__body">
+                <span class="stat-item__label">Idle Time</span>
+                <span class="stat-item__value">
+                  <span class="stat-item__number" data-count="{{ idle | default(0) }}">0</span> min
+                </span>
+              </div>
+              <div class="stat-item__bar">
+                <span class="stat-item__bar-fill stat-item__bar-fill--idle" data-bar="{{ idle | default(0) }}"></span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Recommendation card -->
+        <!-- AI Recommendation card -->
+<section class="card card--tip" data-animate="fade-in-up" style="--delay: 0.30s">
+
+  <div class="card__eyebrow">AI Recommendation</div>
+
+  <div class="tip">
+
+    <div class="tip__icon">💡</div>
+
+    <div class="tip__content">
+
+      <p class="tip__text" id="tip-text">
+        {{ tip | default('Enter your study details to receive personalized recommendations.') }}
+      </p>
+
+      {% if recommendations %}
+        <div class="recommendation-list">
+
+          {% for recommendation in recommendations %}
+            <div class="recommendation-item">
+              <span class="recommendation-item__icon">✓</span>
+              <span>{{ recommendation }}</span>
+            </div>
+          {% endfor %}
+
+        </div>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="site-footer">
+    <p>Developed by <span class="site-footer__name">Ragul R</span></p>
+    <p class="site-footer__stack">Machine Learning Project &nbsp;·&nbsp; Python &nbsp;•&nbsp; Flask &nbsp;•&nbsp; Random Forest</p>
+  </footer>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
